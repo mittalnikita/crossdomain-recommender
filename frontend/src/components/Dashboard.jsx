@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+// src/Dashboard.jsx
+import React, { useState, useEffect } from "react";
 import yogaImageMap from "./yogaImageMap";
-import Header from './Header';
+import Header from "./Header";
 
+// === Helpers ===
 const getTimeOfDay = () => {
   const hour = new Date().getHours();
   if (hour < 11) return "breakfast";
@@ -10,7 +12,7 @@ const getTimeOfDay = () => {
 };
 
 const getCurrentDay = () => {
-  return new Date().toLocaleDateString('en-US', { weekday: 'long' });
+  return new Date().toLocaleDateString("en-US", { weekday: "long" });
 };
 
 const getCurrentWeek = () => {
@@ -19,104 +21,151 @@ const getCurrentWeek = () => {
   return Math.ceil((diff + start.getDay() + 1) / 7);
 };
 
+// Extract Yoga pose names for images
 const extractYogaPoseNames = (yogaString) => {
   if (!yogaString) return [];
   return yogaString
-    .split(';')
-    .map(part => {
+    .split(";")
+    .map((part) => {
       const match = part.match(/^([^()]+?)(\s*\([^)]*\))?$/);
       return match?.[1]?.trim();
     })
     .filter(Boolean);
 };
 
+// SELECTED NUTRIENTS to show
+const SELECTED_NUTRIENTS = [
+  "calories_kcal",
+  "protein_g",
+  "carbohydrates_g",
+  "dietary_fiber_g",
+  "total_fat_g",
+  "added_sugar_g",
+  "vitamin_c_mg",
+  "magnesium_mg",
+  "selenium_µg",
+  "zinc_mg",
+];
+
 const Dashboard = () => {
   const [toggle, setToggle] = useState(false);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // NEW: Track JSON dataset & current displayed slot/day
   const [jsonData, setJsonData] = useState([]);
-  const [timeSlot, setTimeSlot] = useState(getTimeOfDay());
-  const [dayName, setDayName] = useState(getCurrentDay());
 
-  // Store initial real-time day/time for revert feature
-  const realTimeSlot = getTimeOfDay();
-  const realDayName = getCurrentDay();
+  const realTime = getTimeOfDay();
+  const realDay = getCurrentDay();
 
-  // NEW: Flag to disable multiple next clicks
+  const [timeSlot, setTimeSlot] = useState(realTime);
+  const [dayName, setDayName] = useState(realDay);
+
   const [hasMovedToNext, setHasMovedToNext] = useState(false);
 
   const timeOrder = ["breakfast", "lunch", "dinner"];
 
+  // === Load the JSON data ===
   useEffect(() => {
-    const fetchData = async () => {
+    const loadData = async () => {
       const disease = localStorage.getItem("disease")?.toLowerCase();
       const week = getCurrentWeek();
-      const file = week % 2 === 1 ? "/instruct_final_recommendations.json" : "/hermes_final_recommendations.json";
+
+      const file =
+        week % 2 === 1
+          ? "/gpt_weekly_recommendations.json"
+          : "/gemini_weekly_recommendations.json";
 
       try {
         const res = await fetch(file);
         const json = await res.json();
-        const filteredData = json.filter(item => item.disease.toLowerCase() === disease);
-        setJsonData(filteredData);
 
-        // Initial plan
-        const initialPlan = filteredData.find(
-          item =>
-            item.day.toLowerCase() === realDayName.toLowerCase() &&
-            item.time.toLowerCase() === realTimeSlot
+        const filtered = json.filter(
+          (item) => item.disease.toLowerCase() === disease
         );
-        setData(initialPlan || {});
+
+        setJsonData(filtered);
+
+        const initial = filtered.find(
+          (item) =>
+            item.day.toLowerCase() === realDay.toLowerCase() &&
+            item.time.toLowerCase() === realTime
+        );
+
+        setData(initial || filtered[0] || null);
         setLoading(false);
-      } catch (error) {
-        console.error("❌ Failed to load recommendations", error);
+      } catch (e) {
+        console.error("JSON Load Error:", e);
         setLoading(false);
       }
     };
 
-    fetchData();
+    loadData();
   }, []);
 
+  // === Navigation: Next Plan ===
   const handleNextPlan = () => {
-    if (hasMovedToNext) return; // prevent moving further
+    if (hasMovedToNext) return;
 
-    const currentIndex = timeOrder.indexOf(timeSlot);
+    const idx = timeOrder.indexOf(timeSlot);
+
     let newTime, newDay;
 
-    if (currentIndex < timeOrder.length - 1) {
-      newTime = timeOrder[currentIndex + 1];
+    if (idx < 2) {
+      newTime = timeOrder[idx + 1];
       newDay = dayName;
     } else {
-      // Wrap to next day's breakfast
-      newTime = timeOrder[0];
-      const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-      const currentDayIndex = daysOfWeek.indexOf(dayName);
-      newDay = daysOfWeek[(currentDayIndex + 1) % 7];
+      // Move to next day’s breakfast
+      const days = [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+      ];
+      newTime = "breakfast";
+      newDay = days[(days.indexOf(dayName) + 1) % 7];
     }
 
     setTimeSlot(newTime);
     setDayName(newDay);
 
-    const nextPlan = jsonData.find(
-      item => item.day.toLowerCase() === newDay.toLowerCase() && item.time.toLowerCase() === newTime
+    const next = jsonData.find(
+      (i) =>
+        i.day.toLowerCase() === newDay.toLowerCase() &&
+        i.time.toLowerCase() === newTime
     );
-    setData(nextPlan || {});
+
+    setData(next || {});
     setHasMovedToNext(true);
   };
 
+  // === Back to current plan ===
   const handleBackToCurrent = () => {
-    setTimeSlot(realTimeSlot);
-    setDayName(realDayName);
+    setTimeSlot(realTime);
+    setDayName(realDay);
 
-    const currentPlan = jsonData.find(
-      item => item.day.toLowerCase() === realDayName.toLowerCase() && item.time.toLowerCase() === realTimeSlot
+    const curr = jsonData.find(
+      (i) =>
+        i.day.toLowerCase() === realDay.toLowerCase() &&
+        i.time.toLowerCase() === realTime
     );
-    setData(currentPlan || {});
+
+    setData(curr || {});
     setHasMovedToNext(false);
   };
 
-  if (loading) {
+  // === Build Nutrient List Dynamically ===
+  const buildNutrients = (item, isAlt = false) => {
+    const prefix = isAlt ? "alternative_" : "";
+    return SELECTED_NUTRIENTS.map((nut) => ({
+      label: nut.replace(/_/g, " "),
+      value: item[prefix + nut] || "-",
+    }));
+  };
+
+  if (loading || !data) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-xl text-gray-500">Loading recommendations...</p>
@@ -124,119 +173,99 @@ const Dashboard = () => {
     );
   }
 
-  const current = toggle
-    ? {
-        yoga: {
-          pose: data?.alternative_yoga || "Unknown Pose",
-          exercise: data?.alternative_exercise || "-",
-          precaution: data?.alternative_precaution || "-",
-        },
-        meal: {
-          name: data?.meal_meal_name || "-",
-          description: data?.meal_meal_description || "-",
-          Meal_type: data?.time || "-",
-          nutrients: {
-            Calories: data?.meal_calories || "-",
-            Protein: data?.meal_protein || "-",
-            Carbohydrates: data?.meal_carbohydrates || "-",
-            Fiber: data?.meal_fiber || "-",
-            Fat: data?.meal_fat || "-",
-            Sugar: data?.meal_sugar || "-",
-            Cholesterol: data?.meal_cholesterol || "-",
-            Sodium: data?.meal_sodium || "-"
-          }
-        }
-      }
-    : {
-        yoga: {
-          pose: data?.yoga || "Unknown Pose",
-          exercise: data?.exercise || "-",
-          precaution: data?.precaution || "-",
-        },
-        meal: {
-          name: data?.alternative_meal_meal_name || "-",
-          description: data?.alternative_meal_meal_description || "-",
-          Meal_type: data?.time || "-",
-          nutrients: {
-            Calories: data?.alternative_meal_calories || "-",
-            Protein: data?.alternative_meal_protein || "-",
-            Carbohydrates: data?.alternative_meal_carbohydrates || "-",
-            Fiber: data?.alternative_meal_fiber || "-",
-            Fat: data?.alternative_meal_fat || "-",
-            Sugar: data?.alternative_meal_sugar || "-",
-            Cholesterol: data?.alternative_meal_cholesterol || "-",
-            Sodium: data?.alternative_meal_sodium || "-"
-          }
-        }
-      };
+  const isAlt = toggle;
+
+  // === Using natural JSON fields ===
+  const mealName = isAlt ? data.alternative_meal_name : data.meal_name;
+  const mealDesc = isAlt
+    ? data.alternative_meal_description
+    : data.meal_description;
+
+  const nutrients = buildNutrients(data, isAlt);
+
+  const yogaPose = isAlt ? data.alternative_yoga : data.yoga;
+  const yogaExercise = isAlt ? data.alternative_exercise : data.exercise;
+  const yogaPrecaution = isAlt
+    ? data.alternative_precaution
+    : data.precaution;
 
   return (
     <>
       <Header />
-      <div className="min-h-screen bg-gray-100 p-5 flex flex-col items-center ">
-        <h1 className="text-3xl font-bold text-center text-blue-700">HealthWise Dashboard</h1>
-        <p className='text-center mb-8 text-gray-500'>Personalized recommendations to help manage your health levels.</p>
-        
+
+      <div className="min-h-screen bg-gray-100 p-5 flex flex-col items-center">
+        <h1 className="text-3xl font-bold text-blue-700">HealthWise Dashboard</h1>
+        <p className="text-center mb-8 text-gray-500">
+          Personalized recommendations to help manage your health levels.
+        </p>
+
         <div className="flex flex-col md:flex-row gap-8 justify-center">
-          {/* Yoga / Exercise Card */}
+          {/* YOGA CARD */}
           <div className="bg-white shadow-lg rounded-lg p-6 w-full md:w-1/2">
-            <h2 className="text-2xl font-semibold mb-4 text-green-700 text-center">Yoga & Exercise</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-              {extractYogaPoseNames(current.yoga.pose).map((pose, index) => (
+            <h2 className="text-2xl font-semibold mb-4 text-green-700 text-center">
+              Yoga & Exercise
+            </h2>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
+              {extractYogaPoseNames(yogaPose).map((pose, index) => (
                 <div key={index} className="flex flex-col items-center">
                   <img
                     src={yogaImageMap[pose.toLowerCase()] || yogaImageMap["default"]}
                     alt={pose}
-                    className="w-45 h-45 object-contain rounded-md shadow-md"
+                    className="w-32 h-32 object-contain rounded-md shadow"
                   />
-                  <p className="mt-2 text-sm text-center font-medium text-gray-700">{pose}</p>
+                  <p className="mt-2 text-sm text-center font-medium text-gray-700">
+                    {pose}
+                  </p>
                 </div>
               ))}
             </div>
-            <p><span className='font-semibold'>Pose:</span> {current.yoga.pose}</p> 
-            <p><span className="font-semibold">Exercise:</span> {current.yoga.exercise}</p>
-            <p><span className="font-semibold">Precaution:</span> {current.yoga.precaution}</p>
+
+            <p>
+              <b>Pose:</b> {yogaPose}
+            </p>
+            <p>
+              <b>Exercise:</b> {yogaExercise}
+            </p>
+            <p>
+              <b>Precaution:</b> {yogaPrecaution}
+            </p>
           </div>
 
-          {/* Meal Plan Card */}
+          {/* MEAL CARD */}
           <div
-            className="relative shadow-xl rounded-2xl p-6 w-full md:w-1/2 overflow-hidden bg-white"
+            className="relative shadow-xl rounded-2xl p-6 w-full md:w-1/2 bg-white overflow-hidden"
             style={{
               backgroundImage: `url('/images/meal-bg.jpg')`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              backgroundRepeat: 'no-repeat',
+              backgroundSize: "cover",
+              backgroundPosition: "center",
             }}
           >
-            <div className="absolute inset-0 bg-opacity-25 bg-black rounded-2xl z-0"></div>
-            <div className="relative z-10 space-y-4">
-              <h2 className="text-3xl font-bold text-center text-red-100"> Meal Plan</h2>
-              <div>
-                <h3 className="text-xl font-semibold text-white">
-                  <span className="text-gray-200">Meal:</span> {current.meal.name}
-                </h3>
-                <p className="text-l italic text-gray-50">{current.meal.description}</p>
-                <p className="text-l py-3">
-                  <span className="font-semibold text-gray-200">Meal Type:</span>
-                  <span className="ml-2 px-2 py-1 rounded-full bg-green-100 text-green-800 text-xs uppercase tracking-wide">
-                    {current.meal.Meal_type}
-                  </span>
-                </p>
-              </div>
+            <div className="absolute inset-0 bg-black bg-opacity-30 rounded-2xl"></div>
 
-              {/* Nutrients Card */}
-              <div className="bg-white bg-opacity-95 border border-gray-300 rounded-lg p-5 shadow-inner">
-                <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  Nutrients
-                </h4>
-                <ul className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {Object.entries(current.meal.nutrients).map(([key, value]) => (
-                    <li
-                      key={key}
-                      className="flex items-center gap-2 text-sm text-gray-700 bg-gray-50 rounded px-2 py-1 shadow-sm hover:bg-gray-100 transition"
-                    >
-                      <span className="font-semibold capitalize">{key}:</span>
-                      <span className="text-gray-900">{value}</span>
+            <div className="relative z-10 text-white space-y-3">
+              <h2 className="text-2xl font-bold text-center">Meal Plan</h2>
+
+              <h3 className="text-xl font-semibold">
+                <span className="text-gray-200">Meal:</span> {mealName}
+              </h3>
+
+              <p className="italic text-gray-50">{mealDesc}</p>
+
+              <p className="mt-3">
+                <span className="font-bold text-gray-200">Meal Type:</span>{" "}
+                {data.time}
+              </p>
+
+              {/* NUTRIENT LIST */}
+              <div className="bg-white bg-opacity-90 p-4 rounded-lg mt-4 text-black">
+                <h4 className="font-bold text-lg mb-3">Nutrients</h4>
+
+                <ul className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {nutrients.map((n, i) => (
+                    <li key={i} className="text-sm bg-gray-100 p-2 rounded">
+                      <b>{n.label}: </b>
+                      {n.value}
                     </li>
                   ))}
                 </ul>
@@ -249,15 +278,15 @@ const Dashboard = () => {
         <div className="mt-8 flex gap-4">
           <button
             onClick={() => setToggle(!toggle)}
-            className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white px-6 py-2 rounded-md shadow-md hover:scale-105 transition-transform"
+            className="bg-blue-600 text-white px-5 py-2 rounded-md shadow hover:scale-105 transition"
           >
-            Generate Alternative Plan
+            {toggle ? "Show Main Plan" : "Show Alternative Plan"}
           </button>
 
           {!hasMovedToNext && (
             <button
               onClick={handleNextPlan}
-              className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-6 py-2 rounded-md shadow-md hover:scale-105 transition-transform"
+              className="bg-green-600 text-white px-5 py-2 rounded-md shadow hover:scale-105 transition"
             >
               Next Plan →
             </button>
@@ -266,7 +295,7 @@ const Dashboard = () => {
           {hasMovedToNext && (
             <button
               onClick={handleBackToCurrent}
-              className="bg-gradient-to-r from-gray-600 to-gray-800 text-white px-6 py-2 rounded-md shadow-md hover:scale-105 transition-transform"
+              className="bg-gray-700 text-white px-5 py-2 rounded-md shadow hover:scale-105 transition"
             >
               Back to Current Plan
             </button>
