@@ -1,0 +1,11 @@
+*
+!backend/
+!backend/app/
+!backend/requirements.txt
+
+**/__pycache__/
+backend/new/
+backend/*.db
+frontend/
+node_modules/
+.git/
