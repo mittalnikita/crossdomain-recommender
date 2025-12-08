@@ -15,7 +15,7 @@ app.include_router(user.router, prefix="/user", tags=["User"])
 Base.metadata.create_all(bind=engine)
 
 # Allow CORS from frontend
-origins = ["http://localhost:5173"]
+origins = ["*",]
 
 app.add_middleware(
     CORSMiddleware,
