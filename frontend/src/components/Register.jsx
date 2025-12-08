@@ -73,8 +73,11 @@ const Register = () => {
       return;
     }
 
+    console.log("submit fired");
+
+
     try {
-      const res = await fetch('https://crossdomain-recommender-production.up.railway.app/user/register', {
+      const res = await fetch('https://crossdomain-recommender-production-4785.up.railway.app/user/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -83,9 +86,10 @@ const Register = () => {
           name: formData.fullName,
           email: formData.email,
           password: formData.password,
-          age: formData.age,
+          age: Number(formData.age),
           gender: formData.gender
         })
+
       });
 
     const data = await res.json();
@@ -226,7 +230,6 @@ const Register = () => {
 
           <button
             type="submit" 
-            onClick={handleSubmit}
             className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
           >
             Register

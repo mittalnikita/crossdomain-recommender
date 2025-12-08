@@ -15,7 +15,12 @@ app.include_router(user.router, prefix="/user", tags=["User"])
 Base.metadata.create_all(bind=engine)
 
 # Allow CORS from frontend
-origins = ["*",]
+origins = [
+    "http://localhost:5173",
+    "https://frabjous-paletas-46f6e7.netlify.app",
+    "https://crossdomain-recommender-production-4785.up.railway.app",
+    "*"
+]
 
 app.add_middleware(
     CORSMiddleware,
@@ -24,7 +29,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 # Dependency for DB session
 def get_db():

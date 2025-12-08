@@ -31,7 +31,7 @@ const Login = () => {
     }
 
     try {
-      const response = await fetch("https://crossdomain-recommender-production.up.railway.app//user/login", {
+      const response = await fetch("https://crossdomain-recommender-production-4785.up.railway.app/user/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
