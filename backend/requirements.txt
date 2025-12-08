@@ -2,11 +2,11 @@ fastapi
 uvicorn[standard]
 sqlalchemy
 python-multipart
-passlib[bcrypt]
+bcrypt==3.2.0
+passlib[bcrypt]==1.7.4
 python-jose
 pydantic
 pydantic-settings
-bcrypt
 requests
 alembic
 psycopg2-binary   # Only if using PostgreSQL
