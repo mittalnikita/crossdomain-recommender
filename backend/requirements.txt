@@ -10,3 +10,4 @@ bcrypt
 requests
 alembic
 psycopg2-binary   # Only if using PostgreSQL
+email-validator
