@@ -33,19 +33,45 @@ const extractYogaPoseNames = (yogaString) => {
     .filter(Boolean);
 };
 
-// SELECTED NUTRIENTS to show
-const SELECTED_NUTRIENTS = [
-  "calories_kcal",
-  "protein_g",
-  "carbohydrates_g",
-  "dietary_fiber_g",
-  "total_fat_g",
-  "added_sugar_g",
-  "vitamin_c_mg",
-  "magnesium_mg",
-  "selenium_µg",
-  "zinc_mg",
-];
+// === Disease-Specific Nutrient Lists ===
+const NUTRIENT_MAP = {
+  diabetes: [
+    "calories_kcal",
+    "protein_g",
+    "carbohydrates_g",
+    "dietary_fiber_g",
+    "total_fat_g",
+    "added_sugar_g",
+    "magnesium_mg",
+    "selenium_µg"
+  ],
+
+  asthma: [
+    "calories_kcal",
+    "protein_g",
+    "carbohydrates_g",
+    "dietary_fiber_g",
+    "vitamin_c_mg",
+    "magnesium_mg",
+    "selenium_µg"
+  ],
+
+  cholesterol: [
+    "calories_kcal",
+    "iron_mg",
+    "copper_mg",
+    "zinc_mg",
+    "chromium_µg",
+    "potassium_mg",
+    "magnesium_mg",
+    "vitamin_b6_mg",
+    "vitamin_b9_folate_µg",
+    "vitamin_b12_µg",
+    "selenium_µg",
+    "phosphorus_mg"
+  ],
+};
+
 
 const Dashboard = () => {
   const [toggle, setToggle] = useState(false);
@@ -156,14 +182,21 @@ const Dashboard = () => {
     setHasMovedToNext(false);
   };
 
-  // === Build Nutrient List Dynamically ===
+  // === Build Nutrients Dynamically Based on Disease ===
   const buildNutrients = (item, isAlt = false) => {
+    const disease = localStorage.getItem("disease")?.toLowerCase();
+
+    // Pick correct nutrient set
+    const selected = NUTRIENT_MAP[disease] || [];
+
     const prefix = isAlt ? "alternative_" : "";
-    return SELECTED_NUTRIENTS.map((nut) => ({
+
+    return selected.map((nut) => ({
       label: nut.replace(/_/g, " "),
-      value: item[prefix + nut] || "-",
+      value: item[prefix + nut] || "-"
     }));
   };
+
 
   if (loading || !data) {
     return (
@@ -201,35 +234,43 @@ const Dashboard = () => {
 
         <div className="flex flex-col md:flex-row gap-8 justify-center">
           {/* YOGA CARD */}
-          <div className="bg-white shadow-lg rounded-lg p-6 w-full md:w-1/2">
-            <h2 className="text-2xl font-semibold mb-4 text-green-700 text-center">
-              Yoga & Exercise
-            </h2>
+          <div
+            className="relative shadow-xl rounded-2xl p-6 w-full md:w-1/2 overflow-hidden bg-white"
+            style={{
+              backgroundImage: `url('/images/yoga-bg.jpg')`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+          >
+          
+          {/* Dark overlay */}
+          <div className="absolute inset-0 bg-black bg-opacity-30 rounded-2xl"></div>
+            {/* Content */}
+            <div className="relative z-10 text-white space-y-4">
+              <h2 className="text-3xl font-bold text-center text-green-100">
+                Yoga & Exercise
+              </h2>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
-              {extractYogaPoseNames(yogaPose).map((pose, index) => (
-                <div key={index} className="flex flex-col items-center">
-                  <img
-                    src={yogaImageMap[pose.toLowerCase()] || yogaImageMap["default"]}
-                    alt={pose}
-                    className="w-32 h-32 object-contain rounded-md shadow"
-                  />
-                  <p className="mt-2 text-sm text-center font-medium text-gray-700">
-                    {pose}
-                  </p>
-                </div>
-              ))}
+              {/* Yoga Details Box */}
+              <div className="bg-white bg-opacity-50 p-5 rounded-lg shadow-inner text-black space-y-3">
+
+                <p className="text-lg">
+                  <span className="font-semibold text-green-800">Pose:</span>{" "}
+                  {yogaPose}
+                </p>
+
+                <p className="text-lg">
+                  <span className="font-semibold text-green-800">Exercise:</span>{" "}
+                  {yogaExercise}
+                </p>
+
+                <p className="text-lg">
+                  <span className="font-semibold text-green-800">Precaution:</span>{" "}
+                  {yogaPrecaution}
+                </p>
+
+              </div>
             </div>
-
-            <p>
-              <b>Pose:</b> {yogaPose}
-            </p>
-            <p>
-              <b>Exercise:</b> {yogaExercise}
-            </p>
-            <p>
-              <b>Precaution:</b> {yogaPrecaution}
-            </p>
           </div>
 
           {/* MEAL CARD */}

@@ -43,4 +43,4 @@ def get_db():
 
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to the Cross-Domain Recommendation API"}
+    return {"status": "ok"}
