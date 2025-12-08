@@ -74,7 +74,7 @@ const Register = () => {
     }
 
     try {
-      const res = await fetch('https://laudable-liberation-production.up.railway.app/user/register', {
+      const res = await fetch('https://crossdomain-recommender-production.up.railway.app/user/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
